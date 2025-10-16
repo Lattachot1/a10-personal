@@ -1,52 +1,117 @@
-import NextAuth from "next-auth/next";
-import {AuthOptions} from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import userLogIn from "@/libs/userLogIn";
+import { authOptions } from "./authOptions";
 
-export const authOptions: AuthOptions = {
-  providers: [
-    // Add your providers here
-    CredentialsProvider({
-    // The name to display on the sign in form (e.g. "Sign in with...")
-    name: "Credentials",
-    // `credentials` is used to generate a form on the sign in page.
-    // You can specify which fields should be submitted, by adding keys to the `credentials` object.
-    // e.g. domain, username, password, 2FA token, etc.
-    // You can pass any HTML attribute to the <input> tag through the object.
-    credentials: {
-      email: { label: "Email", type: "email", placeholder: "Email" },
-      password: { label: "Password", type: "password" }
-    },
-    async authorize(credentials, req) {
-        // You need to provide your own logic here that takes the credentials
-        const user = await userLogIn(credentials?.email!, credentials?.password!);
+async function getHandler() {
+  const NextAuthModule = await import('next-auth');
+  const NextAuthFn = (NextAuthModule as any).default || NextAuthModule;
+  return NextAuthFn(authOptions as any);
+}
 
-        if (user) {
-        // Any object returned will be saved in `user` property of the JWT
-        return user
-        } else {
-        // If you return null then an error will be displayed advising the user to check their details.
-        return null
+export async function GET(request: Request) {
+  const h = await getHandler();
+  const url = new URL(request.url || "http://localhost");
 
-        // You can also Reject this callback with an Error thus the user will be sent to the error page with the error message as a query parameter
-        }
-    }
-  })
-     
+  // build minimal Node-like req object expected by next-auth
+  const req: any = {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers),
+    body: undefined,
+    query: {},
+  };
 
-  ],
-  session:{strategy:"jwt"},
-  callbacks: {
-    async jwt({ token, user }) {
-        return { ...token, ...user };
-    },
-    async session({ session, token }) {
-        session.user = token as any;
-        return session;    
+  // Populate body for non-GET
+  if (request.method !== "GET") {
+    try {
+      const txt = await request.text();
+      req.body = txt ? JSON.parse(txt) : undefined;
+    } catch (e) {
+      req.body = undefined;
     }
   }
-};
 
-const handler = NextAuth(authOptions);
+  // build nextauth route segments from pathname after /api/auth/
+  const parts = url.pathname.split("/api/auth/");
+  const nextauth = parts.length > 1 ? parts[1].split("/").filter(Boolean) : [];
+  req.query.nextauth = nextauth;
 
-export {handler as GET, handler as POST};
+  // minimal res object that collects status and headers and returns a Response
+  const res: any = {
+    statusCode: 200,
+    headers: {},
+    getHeader(name: string) {
+      return this.headers[name.toLowerCase()];
+    },
+    setHeader(name: string, value: any) {
+      this.headers[name.toLowerCase()] = value;
+    },
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    end(body?: any) {
+      const init: any = { status: this.statusCode || 200, headers: this.headers };
+      if (body instanceof Buffer) body = body.toString();
+      if (typeof body === "object") {
+        return new Response(JSON.stringify(body), init);
+      }
+      return new Response(body?.toString() || null, init);
+    },
+    send(body?: any) {
+      return this.end(body);
+    },
+  };
+
+  return await h(req, res);
+}
+
+export async function POST(request: Request) {
+  const h = await getHandler();
+  const url = new URL(request.url || "http://localhost");
+
+  const req: any = {
+    url: request.url,
+    method: request.method,
+    headers: Object.fromEntries(request.headers),
+    body: undefined,
+    query: {},
+  };
+
+  try {
+    const txt = await request.text();
+    req.body = txt ? JSON.parse(txt) : undefined;
+  } catch (e) {
+    req.body = undefined;
+  }
+
+  const parts = url.pathname.split("/api/auth/");
+  const nextauth = parts.length > 1 ? parts[1].split("/").filter(Boolean) : [];
+  req.query.nextauth = nextauth;
+
+  const res: any = {
+    statusCode: 200,
+    headers: {},
+    getHeader(name: string) {
+      return this.headers[name.toLowerCase()];
+    },
+    setHeader(name: string, value: any) {
+      this.headers[name.toLowerCase()] = value;
+    },
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    end(body?: any) {
+      const init: any = { status: this.statusCode || 200, headers: this.headers };
+      if (body instanceof Buffer) body = body.toString();
+      if (typeof body === "object") {
+        return new Response(JSON.stringify(body), init);
+      }
+      return new Response(body?.toString() || null, init);
+    },
+    send(body?: any) {
+      return this.end(body);
+    },
+  };
+
+  return await h(req, res);
+}
