@@ -1,17 +1,17 @@
 import DateReserve from "@/components/DateReserve";
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"
 import getUserProfile from "@/libs/getUserProfile"
 
 export default async function reservation() {
-  const session = await getServerSession(authOptions);
+  const Session = await getServerSession(authOptions);
 
-  if (!session) {
+  if (!Session) {
     // Handle unauthenticated state
     return null;
     }
 
-  const userProfile = await getUserProfile(session?.user.token);
+  const userProfile = await getUserProfile((Session as any)?.user.token);
   var createdAt = new Date(userProfile.data.createdAt);
   return (
     <main className="w-[80%] flex flex-col items-center space-y-10">

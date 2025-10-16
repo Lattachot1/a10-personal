@@ -1,13 +1,13 @@
 import { getServerSession } from "next-auth"
-import { authOptions } from "@/app/api/auth/[...nextauth]/route"
+import { authOptions } from "@/app/api/auth/[...nextauth]/authOptions"
 import getUserProfile from "@/libs/getUserProfile"
 
 export default async function DashboardPage(){
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession(authOptions as any);
     if(!session){
         return(null);
     }
-    const profile = await getUserProfile(session?.user.token);
+    const profile = await getUserProfile((session as any)?.user.token);
     var createdAt = new Date(profile.data.createdAt);
 
     return(
