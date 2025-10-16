@@ -10,7 +10,11 @@ const createJestConfig = nextJest({
 const config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'jest-environment-jsdom',
+  transformIgnorePatterns: ['node_modules/(?!(jose|oauth4webapi|@auth)/)'],
   preset: 'ts-jest',
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
   verbose: true,
   testTimeout: 30000,
   globals: {
